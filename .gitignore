@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Large binary extraction & firmware dump directories
+rapoo_extracted/
+aula_l99_captures/
+.user_uploaded/
+scratch/
+
+# Caches & local state
+.cache/
+*.log
+
+# Distribution & virtual environments
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+ENV/
+
+# IDE & Editor artifacts
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store

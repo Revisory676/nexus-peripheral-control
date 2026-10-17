@@ -1,0 +1,6 @@
+[submodule "Aula_L99_Linux"]
+	path = Aula_L99_Linux
+	url = https://github.com/Revisory676/aula-l99-linux.git
+[submodule "drivers/rapoo-mt760"]
+	path = drivers/rapoo-mt760
+	url = https://github.com/Revisory676/rapoo-mt760-linux.git

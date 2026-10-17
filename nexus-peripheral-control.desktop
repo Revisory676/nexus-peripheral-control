@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Nexus Peripheral Control
+GenericName=Peripheral Control Hub
+Comment=Native Linux Hardware Manager for Rapoo MT760L Mouse and AULA L99 Mechanical Keyboard
+Exec=nexus-gui
+Icon=nexus-peripheral-control
+Terminal=false
+Type=Application
+Categories=Utility;Settings;HardwareSettings;
+Keywords=nexus;rapoo;mouse;dpi;battery;aula;keyboard;rgb;caelestia;hardware;
+StartupNotify=true
+StartupWMClass=Nexus Peripheral Control
