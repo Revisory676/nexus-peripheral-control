@@ -177,9 +177,9 @@ class NexusTUIApp(App):
 
                         with Horizontal(classes="gauge-row"):
                             yield Label("Battery :", classes="gauge-label")
-                            self.pb_ov_mouse = ProgressBar(total=100, show_eta=False)
+                            self.pb_ov_mouse = ProgressBar(total=100, show_eta=False, show_percentage=False)
                             yield self.pb_ov_mouse
-                            self.lbl_ov_mouse_bat = Label("0%", classes="value-text")
+                            self.lbl_ov_mouse_bat = Label("0%", classes="gauge-pct")
                             yield self.lbl_ov_mouse_bat
 
                         with Horizontal(classes="stat-row"):
@@ -192,10 +192,10 @@ class NexusTUIApp(App):
                             self.lbl_ov_mouse_pwr = Label("--", classes="value-text")
                             yield self.lbl_ov_mouse_pwr
 
-                        with Horizontal(classes="card-actions-row"):
-                            yield Button("⚙️ Mouse Settings [2]", id="btn-goto-mouse", classes="btn-primary")
-                            yield Button("🔄 Refresh", id="btn-ov-mouse-refresh")
-                            yield Button("🔗 Pair", id="btn-ov-mouse-pair")
+                        yield Button("⚙️ Mouse Settings & DPI [2]", id="btn-goto-mouse", classes="btn-primary btn-full")
+                        with Horizontal(classes="card-subactions-row"):
+                            yield Button("🔄 Refresh", id="btn-ov-mouse-refresh", classes="btn-subaction")
+                            yield Button("🔗 Pair 2.4G", id="btn-ov-mouse-pair", classes="btn-subaction")
 
                     # Keyboard Bento
                     with ClickableDeviceCard("tab-keyboard", id="card-ov-kbd", classes="device-card-home"):
@@ -206,9 +206,9 @@ class NexusTUIApp(App):
 
                         with Horizontal(classes="gauge-row"):
                             yield Label("Battery :", classes="gauge-label")
-                            self.pb_ov_kbd = ProgressBar(total=100, show_eta=False)
+                            self.pb_ov_kbd = ProgressBar(total=100, show_eta=False, show_percentage=False)
                             yield self.pb_ov_kbd
-                            self.lbl_ov_kbd_bat = Label("0%", classes="value-text")
+                            self.lbl_ov_kbd_bat = Label("0%", classes="gauge-pct")
                             yield self.lbl_ov_kbd_bat
 
                         with Horizontal(classes="stat-row"):
@@ -218,18 +218,18 @@ class NexusTUIApp(App):
 
                         with Horizontal(classes="stat-row"):
                             yield Label("Win-Lock    :", classes="stat-label")
-                            self.lbl_ov_kbd_lock = Label("Win-Lock: OFF", classes="value-text")
+                            self.lbl_ov_kbd_lock = Label("OFF", classes="value-text")
                             yield self.lbl_ov_kbd_lock
 
-                        with Horizontal(classes="card-actions-row"):
-                            yield Button("⚙️ Keyboard Settings [3]", id="btn-goto-kbd", classes="btn-primary")
-                            yield Button("🕒 Sync RTC", id="btn-ov-kbd-rtc")
-                            yield Button("🔒 Win-Lock", id="btn-ov-kbd-winlock")
+                        yield Button("⚙️ Keyboard Settings & RGB [3]", id="btn-goto-kbd", classes="btn-primary btn-full")
+                        with Horizontal(classes="card-subactions-row"):
+                            yield Button("🕒 Sync Clock", id="btn-ov-kbd-rtc", classes="btn-subaction")
+                            yield Button("🔒 Win-Lock", id="btn-ov-kbd-winlock", classes="btn-subaction")
 
                 with Horizontal(classes="home-footer-chips"):
                     yield Button("🛠️ Dongle 1 Recovery [4]", id="btn-goto-rec", classes="btn-chip")
                     yield Button("🎨 Theme Inspector [5]", id="btn-goto-theme", classes="btn-chip")
-                    yield Button("🔄 Refresh Telemetry [R]", id="btn-home-refresh-all", classes="btn-chip")
+                    yield Button("🔄 Refresh All [R]", id="btn-home-refresh-all", classes="btn-chip")
 
             # 2. RAPOO MT760L TAB
             with TabPane("02 Rapoo MT760L", id="tab-mouse"):
@@ -243,7 +243,7 @@ class NexusTUIApp(App):
                         self.lbl_m_mode = Label("--", classes="value-text")
                         yield self.lbl_m_mode
                         yield Label("Battery Level:", classes="info-label")
-                        self.pb_m_battery = ProgressBar(total=100, show_eta=False)
+                        self.pb_m_battery = ProgressBar(total=100, show_eta=False, show_percentage=False)
                         yield self.pb_m_battery
                         self.lbl_m_bat_pct = Label("0%", classes="value-text")
                         yield self.lbl_m_bat_pct
@@ -459,7 +459,7 @@ class NexusTUIApp(App):
         self.lbl_ov_kbd_mode.update(val.upper())
 
     def watch_kbd_win_lock(self, val: bool) -> None:
-        txt = "Win-Lock: ON (Gaming Mode)" if val else "Win-Lock: OFF"
+        txt = "ON (Gaming Lock)" if val else "OFF"
         self.lbl_ov_kbd_lock.update(txt)
 
     # Keybinding actions

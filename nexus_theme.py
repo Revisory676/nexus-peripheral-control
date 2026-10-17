@@ -228,6 +228,11 @@ TabPane {{
     background: {tokens.background};
 }}
 
+#tab-home {{
+    padding: 0 1;
+    background: {tokens.background};
+}}
+
 .bento-grid {{
     layout: grid;
     grid-size: 2 1;
@@ -283,9 +288,18 @@ ProgressBar {{
     height: 1;
 }}
 
+Bar {{
+    height: 1;
+}}
+
 Bar > .bar--bar {{
-    color: {tokens.accent_green if not is_light else tokens.primary};
-    background: {gauge_bg};
+    color: {tokens.primary if is_light else tokens.accent_green};
+    background: {tokens.outline_variant if is_light else tokens.surface_high};
+}}
+
+Bar > .bar--complete {{
+    color: {tokens.primary if is_light else tokens.accent_green};
+    background: {tokens.outline_variant if is_light else tokens.surface_high};
 }}
 
 Button {{
@@ -348,9 +362,9 @@ Log {{
 .home-hero-pill {{
     background: {tokens.primary_container};
     border: solid {tokens.primary};
-    padding: 0 1;
-    margin: 0 1 1 1;
-    height: 1;
+    padding: 0 2;
+    margin: 1 1 0 1;
+    height: 3;
     content-align: center middle;
 }}
 
@@ -363,15 +377,15 @@ Log {{
     layout: grid;
     grid-size: 2 1;
     grid-columns: 1fr 1fr;
-    grid-gutter: 1;
+    grid-gutter: 2;
     height: auto;
-    margin: 0 1;
+    margin: 1 1 0 1;
 }}
 
 .device-card-home {{
     background: {tokens.surface_container};
     border: solid {tokens.outline_variant};
-    padding: 0 1;
+    padding: 0 2;
     height: auto;
 }}
 
@@ -384,6 +398,7 @@ Log {{
     height: 1;
     content-align: left middle;
     margin-top: 1;
+    margin-bottom: 1;
 }}
 
 .card-title-lg {{
@@ -395,40 +410,71 @@ Log {{
 .gauge-row {{
     height: 1;
     content-align: left middle;
-    margin-top: 1;
+    margin: 0;
 }}
 
 .gauge-label {{
     color: {tokens.secondary};
     text-style: bold;
-    width: 9;
+    width: 10;
+}}
+
+.gauge-row ProgressBar {{
+    width: 1fr;
+    height: 1;
+    margin: 0 1;
+}}
+
+.gauge-row ProgressBar Bar {{
+    width: 1fr;
+}}
+
+.gauge-pct {{
+    color: {highlight_color};
+    text-style: bold;
+    width: 6;
+    text-align: right;
 }}
 
 .stat-row {{
     height: 1;
-    margin-top: 0;
+    margin-top: 1;
 }}
 
 .stat-label {{
     color: {tokens.secondary};
     text-style: bold;
-    width: 15;
+    width: 16;
 }}
 
-.card-actions-row {{
+.btn-full {{
+    width: 100%;
     height: 3;
     margin-top: 1;
-    content-align: center middle;
+    text-style: bold;
+}}
+
+.card-subactions-row {{
+    height: 3;
+    margin-top: 1;
+    margin-bottom: 1;
+}}
+
+.btn-subaction {{
+    width: 1fr;
+    margin: 0 1;
+    height: 3;
+    text-style: bold;
 }}
 
 .home-footer-chips {{
     height: 3;
     content-align: center middle;
-    margin-top: 1;
+    margin: 1 1 0 1;
 }}
 
 .btn-chip {{
-    min-width: 20;
+    min-width: 26;
     margin: 0 1;
     background: {tokens.surface_high};
     color: {tokens.text};
