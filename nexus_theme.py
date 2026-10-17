@@ -333,7 +333,7 @@ Input:focus {{
 }}
 
 #log-container {{
-    height: 6;
+    height: 7;
     margin: 0 2 1 2;
     background: {tokens.surface_container};
     border: solid {tokens.outline_variant};
@@ -348,15 +348,97 @@ Log {{
 .home-hero-pill {{
     background: {tokens.primary_container};
     border: solid {tokens.primary};
-    padding: 0 2;
-    margin-bottom: 1;
-    height: 3;
+    padding: 0 1;
+    margin: 0 1 1 1;
+    height: 1;
     content-align: center middle;
 }}
 
 .hero-title {{
     color: {tokens.on_primary_container};
     text-style: bold;
+}}
+
+.home-bento-grid {{
+    layout: grid;
+    grid-size: 2 1;
+    grid-columns: 1fr 1fr;
+    grid-gutter: 1;
+    height: auto;
+    margin: 0 1;
+}}
+
+.device-card-home {{
+    background: {tokens.surface_container};
+    border: solid {tokens.outline_variant};
+    padding: 0 1;
+    height: auto;
+}}
+
+.device-card-home:hover {{
+    border: solid {tokens.primary};
+    background: {tokens.surface_high};
+}}
+
+.card-header-row {{
+    height: 1;
+    content-align: left middle;
+    margin-top: 1;
+}}
+
+.card-title-lg {{
+    color: {tokens.primary};
+    text-style: bold;
+    width: 1fr;
+}}
+
+.gauge-row {{
+    height: 1;
+    content-align: left middle;
+    margin-top: 1;
+}}
+
+.gauge-label {{
+    color: {tokens.secondary};
+    text-style: bold;
+    width: 9;
+}}
+
+.stat-row {{
+    height: 1;
+    margin-top: 0;
+}}
+
+.stat-label {{
+    color: {tokens.secondary};
+    text-style: bold;
+    width: 15;
+}}
+
+.card-actions-row {{
+    height: 3;
+    margin-top: 1;
+    content-align: center middle;
+}}
+
+.home-footer-chips {{
+    height: 3;
+    content-align: center middle;
+    margin-top: 1;
+}}
+
+.btn-chip {{
+    min-width: 20;
+    margin: 0 1;
+    background: {tokens.surface_high};
+    color: {tokens.text};
+    border: solid {tokens.outline_variant};
+    text-style: bold;
+}}
+
+.btn-chip:hover {{
+    background: {tokens.primary};
+    color: {tokens.on_primary};
 }}
 
 .tab-subnav {{
@@ -374,8 +456,13 @@ Log {{
 .btn-back {{
     background: {tokens.surface_high};
     color: {tokens.text};
-    min-width: 22;
+    min-width: 24;
     text-style: bold;
+}}
+
+.btn-back:hover {{
+    background: {tokens.primary};
+    color: {tokens.on_primary};
 }}
 
 .btn-primary {{

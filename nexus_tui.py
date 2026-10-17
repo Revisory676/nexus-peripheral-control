@@ -33,7 +33,7 @@ from aula_l99_hacky import device as aula_device
 from aula_l99_hacky import protocol as aula_protocol
 from nexus_theme import ThemeTokens, generate_tcss
 
-from textual import work
+from textual import on, work
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical, Grid
 from textual.widgets import (
@@ -50,6 +50,7 @@ from textual.widgets import (
     TabPane,
 )
 from textual.reactive import reactive
+from textual.events import Click
 
 theme_tokens = ThemeTokens.load()
 DYNAMIC_TCSS = generate_tcss(theme_tokens)
@@ -108,6 +109,19 @@ class DeviceCard(Vertical):
     pass
 
 
+class ClickableDeviceCard(Vertical):
+    """Clickable Bento-styled container for active device cards on Home screen."""
+    def __init__(self, target_tab: str, **kwargs):
+        super().__init__(**kwargs)
+        self.target_tab = target_tab
+
+    def on_click(self, event: Click) -> None:
+        if isinstance(event.widget, Button):
+            return
+        if hasattr(self.app, "action_goto_tab"):
+            self.app.action_goto_tab(self.target_tab)
+
+
 class NexusTUIApp(App):
     """Caelestia Material 3 Expressive TUI for Nexus Peripheral Control."""
 
@@ -147,62 +161,75 @@ class NexusTUIApp(App):
         yield Header(show_clock=True)
 
         with TabbedContent(id="tabs", initial="tab-home"):
-            # 1. HOME (OVERVIEW) TAB
+            # 1. EXCLUSIVE HOME (NEXUS HUB) TAB
             with TabPane("🏠 01 Home", id="tab-home"):
                 with Container(classes="home-hero-pill"):
-                    self.lbl_home_hero = Label("NEXUS HUB · 2 PERIPHERALS ACTIVE", classes="hero-title")
+                    self.lbl_home_hero = Label("🪐 NEXUS PERIPHERAL CONTROL · HARDWARE DASHBOARD", classes="hero-title")
                     yield self.lbl_home_hero
 
-                with Container(classes="bento-grid"):
+                with Container(classes="home-bento-grid"):
                     # Mouse Bento
-                    with DeviceCard(classes="device-card"):
-                        yield Label("🖱️ RAPOO MT760L", classes="card-title")
-                        self.lbl_ov_mouse_mode = Label("Connecting...", classes="status-badge")
-                        yield self.lbl_ov_mouse_mode
+                    with ClickableDeviceCard("tab-mouse", id="card-ov-mouse", classes="device-card-home"):
+                        with Horizontal(classes="card-header-row"):
+                            yield Label("🖱️ RAPOO MT760L", classes="card-title-lg")
+                            self.lbl_ov_mouse_mode = Label("Connecting...", classes="status-badge")
+                            yield self.lbl_ov_mouse_mode
 
-                        yield Label("Battery Level:", classes="info-label")
-                        self.pb_ov_mouse = ProgressBar(total=100, show_eta=False)
-                        yield self.pb_ov_mouse
-                        self.lbl_ov_mouse_bat = Label("0%", classes="value-text")
-                        yield self.lbl_ov_mouse_bat
+                        with Horizontal(classes="gauge-row"):
+                            yield Label("Battery :", classes="gauge-label")
+                            self.pb_ov_mouse = ProgressBar(total=100, show_eta=False)
+                            yield self.pb_ov_mouse
+                            self.lbl_ov_mouse_bat = Label("0%", classes="value-text")
+                            yield self.lbl_ov_mouse_bat
 
-                        yield Label("Active DPI Preset:", classes="info-label")
-                        self.lbl_ov_mouse_dpi = Label("--", classes="highlight-val")
-                        yield self.lbl_ov_mouse_dpi
+                        with Horizontal(classes="stat-row"):
+                            yield Label("Active DPI :", classes="stat-label")
+                            self.lbl_ov_mouse_dpi = Label("--", classes="highlight-val")
+                            yield self.lbl_ov_mouse_dpi
 
-                        yield Label("Power State:", classes="info-label")
-                        self.lbl_ov_mouse_pwr = Label("--", classes="value-text")
-                        yield self.lbl_ov_mouse_pwr
+                        with Horizontal(classes="stat-row"):
+                            yield Label("Power State:", classes="stat-label")
+                            self.lbl_ov_mouse_pwr = Label("--", classes="value-text")
+                            yield self.lbl_ov_mouse_pwr
 
-                        with Horizontal():
+                        with Horizontal(classes="card-actions-row"):
+                            yield Button("⚙️ Mouse Settings [2]", id="btn-goto-mouse", classes="btn-primary")
                             yield Button("🔄 Refresh", id="btn-ov-mouse-refresh")
                             yield Button("🔗 Pair", id="btn-ov-mouse-pair")
-                            yield Button("⚙️ Mouse Settings [2]", id="btn-goto-mouse", classes="btn-primary")
 
                     # Keyboard Bento
-                    with DeviceCard(classes="device-card"):
-                        yield Label("⌨️ AULA L99", classes="card-title")
-                        self.lbl_ov_kbd_mode = Label("Connecting...", classes="status-badge")
-                        yield self.lbl_ov_kbd_mode
+                    with ClickableDeviceCard("tab-keyboard", id="card-ov-kbd", classes="device-card-home"):
+                        with Horizontal(classes="card-header-row"):
+                            yield Label("⌨️ AULA L99", classes="card-title-lg")
+                            self.lbl_ov_kbd_mode = Label("Connecting...", classes="status-badge")
+                            yield self.lbl_ov_kbd_mode
 
-                        yield Label("Battery Level (2.4GHz):", classes="info-label")
-                        self.pb_ov_kbd = ProgressBar(total=100, show_eta=False)
-                        yield self.pb_ov_kbd
-                        self.lbl_ov_kbd_bat = Label("0%", classes="value-text")
-                        yield self.lbl_ov_kbd_bat
+                        with Horizontal(classes="gauge-row"):
+                            yield Label("Battery :", classes="gauge-label")
+                            self.pb_ov_kbd = ProgressBar(total=100, show_eta=False)
+                            yield self.pb_ov_kbd
+                            self.lbl_ov_kbd_bat = Label("0%", classes="value-text")
+                            yield self.lbl_ov_kbd_bat
 
-                        yield Label("Smart Screen Status:", classes="info-label")
-                        self.lbl_ov_kbd_screen = Label("3.98-in IPS Active", classes="highlight-val")
-                        yield self.lbl_ov_kbd_screen
+                        with Horizontal(classes="stat-row"):
+                            yield Label("Smart Screen:", classes="stat-label")
+                            self.lbl_ov_kbd_screen = Label("3.98-in IPS Active", classes="highlight-val")
+                            yield self.lbl_ov_kbd_screen
 
-                        yield Label("Gaming Shortcuts:", classes="info-label")
-                        self.lbl_ov_kbd_lock = Label("Win-Lock: OFF", classes="value-text")
-                        yield self.lbl_ov_kbd_lock
+                        with Horizontal(classes="stat-row"):
+                            yield Label("Win-Lock    :", classes="stat-label")
+                            self.lbl_ov_kbd_lock = Label("Win-Lock: OFF", classes="value-text")
+                            yield self.lbl_ov_kbd_lock
 
-                        with Horizontal():
-                            yield Button("🕒 Sync Clock", id="btn-ov-kbd-rtc")
-                            yield Button("🔒 Win-Lock", id="btn-ov-kbd-winlock")
+                        with Horizontal(classes="card-actions-row"):
                             yield Button("⚙️ Keyboard Settings [3]", id="btn-goto-kbd", classes="btn-primary")
+                            yield Button("🕒 Sync RTC", id="btn-ov-kbd-rtc")
+                            yield Button("🔒 Win-Lock", id="btn-ov-kbd-winlock")
+
+                with Horizontal(classes="home-footer-chips"):
+                    yield Button("🛠️ Dongle 1 Recovery [4]", id="btn-goto-rec", classes="btn-chip")
+                    yield Button("🎨 Theme Inspector [5]", id="btn-goto-theme", classes="btn-chip")
+                    yield Button("🔄 Refresh Telemetry [R]", id="btn-home-refresh-all", classes="btn-chip")
 
             # 2. RAPOO MT760L TAB
             with TabPane("02 Rapoo MT760L", id="tab-mouse"):
@@ -361,9 +388,37 @@ class NexusTUIApp(App):
         self.register_theme(caelestia_theme)
         self.theme = "caelestia"
 
+        # Apply exclusive Home Screen state (hidden tabs bar & hidden bottom log)
+        self.update_tab_visibility("tab-home")
+
         self.log_msg("Nexus TUI initialized with Caelestia theme. Starting asynchronous hardware polling...")
         self.poll_hardware_telemetry()
         self.set_interval(4.0, self.poll_hardware_telemetry)
+
+    @on(TabbedContent.TabActivated)
+    def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
+        """Dynamically toggle tab bar and bottom logs when switching between Home and detail views."""
+        self.update_tab_visibility(event.pane.id)
+
+    def update_tab_visibility(self, tab_id: str) -> None:
+        """Exclusive Home Screen mode: hide tab bar and bottom logs on Home, reveal on detail views."""
+        is_home = (tab_id == "tab-home")
+        try:
+            from textual.widgets._tabbed_content import ContentTabs
+            tabs_bar = self.query_one(ContentTabs)
+            tabs_bar.display = not is_home
+        except Exception:
+            pass
+        try:
+            log_box = self.query_one("#log-container")
+            log_box.display = not is_home
+        except Exception:
+            pass
+
+    def action_goto_tab(self, tab_id: str) -> None:
+        self.set_focus(None)
+        self.query_one(TabbedContent).active = tab_id
+        self.update_tab_visibility(tab_id)
 
     def log_msg(self, msg: str) -> None:
         ts = datetime.datetime.now().strftime("%H:%M:%S")
@@ -409,19 +464,19 @@ class NexusTUIApp(App):
 
     # Keybinding actions
     def action_tab_home(self) -> None:
-        self.query_one(TabbedContent).active = "tab-home"
+        self.action_goto_tab("tab-home")
 
     def action_tab_mouse(self) -> None:
-        self.query_one(TabbedContent).active = "tab-mouse"
+        self.action_goto_tab("tab-mouse")
 
     def action_tab_keyboard(self) -> None:
-        self.query_one(TabbedContent).active = "tab-keyboard"
+        self.action_goto_tab("tab-keyboard")
 
     def action_tab_recovery(self) -> None:
-        self.query_one(TabbedContent).active = "tab-recovery"
+        self.action_goto_tab("tab-recovery")
 
     def action_tab_theme(self) -> None:
-        self.query_one(TabbedContent).active = "tab-theme"
+        self.action_goto_tab("tab-theme")
 
     def action_refresh_all(self) -> None:
         self.log_msg("Manual telemetry refresh triggered.")
@@ -440,9 +495,10 @@ class NexusTUIApp(App):
         self.worker_pair_mouse()
 
     # Event handlers for buttons
+    @on(Button.Pressed)
     def on_button_pressed(self, event: Button.Pressed) -> None:
         btn_id = event.button.id or ""
-        if btn_id in ("btn-ov-mouse-refresh", "btn-m-refresh"):
+        if btn_id in ("btn-ov-mouse-refresh", "btn-m-refresh", "btn-home-refresh-all"):
             self.poll_hardware_telemetry()
         elif btn_id in ("btn-ov-mouse-pair", "btn-m-pair"):
             self.worker_pair_mouse()
@@ -454,6 +510,10 @@ class NexusTUIApp(App):
             self.action_tab_mouse()
         elif btn_id == "btn-goto-kbd":
             self.action_tab_keyboard()
+        elif btn_id == "btn-goto-rec":
+            self.action_tab_recovery()
+        elif btn_id == "btn-goto-theme":
+            self.action_tab_theme()
         elif btn_id.startswith("btn-back-home"):
             self.action_tab_home()
         elif btn_id.startswith("dpi-"):
