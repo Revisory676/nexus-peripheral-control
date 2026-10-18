@@ -109,6 +109,60 @@ class DeviceCard(Vertical):
     pass
 
 
+from textual import events
+from textual.message import Message
+from textual.driver import Driver
+from textual.drivers.linux_driver import LinuxDriver
+
+
+class HighPerformanceLinuxDriver(LinuxDriver):
+    """High-Performance Linux Driver with Intelligent Mouse-Move Throttling.
+
+    Standard Textual apps request `\\x1b[?1003h` (SET_ANY_EVENT_MOUSE) from terminal emulators
+    such as foot, kitty, or alacritty. With modern 1000Hz gaming mice (like the Rapoo MT760L),
+    the terminal streams up to 1000 mouse movement escape sequences per second into stdin.
+    This overwhelms Python's single-threaded asyncio event queue with DOM hit-tests and
+    CSS :hover calculations, producing severe input latency, stutter, and delayed click responses.
+
+    This driver throttles high-frequency MouseMove escape sequences to ~40Hz (25ms window)
+    with a trailing-edge dispatch to guarantee that final cursor coordinates are delivered.
+    Clicks, wheel scrolls, and keypresses are always dispatched immediately with zero latency.
+    """
+
+    _last_move_time: float = 0.0
+    _throttle_interval: float = 0.025  # ~40 updates/sec
+    _pending_move: events.MouseMove | None = None
+    _trailing_scheduled: bool = False
+
+    def process_message(self, message: Message) -> None:
+        if isinstance(message, events.MouseMove):
+            now = time.monotonic()
+            if now - self._last_move_time < self._throttle_interval:
+                # Retain latest coordinate for trailing delivery when movement pauses
+                self._pending_move = message
+                if not self._trailing_scheduled and self._loop is not None:
+                    self._trailing_scheduled = True
+                    self._loop.call_soon_threadsafe(self._schedule_trailing)
+                return
+
+            self._last_move_time = now
+            self._pending_move = None
+
+        super().process_message(message)
+
+    def _schedule_trailing(self) -> None:
+        if self._loop is not None and not self.exit_event.is_set():
+            self._loop.call_later(self._throttle_interval, self._deliver_trailing)
+
+    def _deliver_trailing(self) -> None:
+        self._trailing_scheduled = False
+        if self._pending_move is not None:
+            msg = self._pending_move
+            self._pending_move = None
+            self._last_move_time = time.monotonic()
+            super().process_message(msg)
+
+
 class ClickableDeviceCard(Vertical):
     """Clickable Bento-styled container for active device cards on Home screen."""
     def __init__(self, target_tab: str, **kwargs):
@@ -128,6 +182,11 @@ class NexusTUIApp(App):
     TITLE = "Nexus Peripheral Control"
     SUB_TITLE = "Caelestia Material 3"
     CSS = DYNAMIC_TCSS
+
+    def get_driver_class(self) -> type[Driver]:
+        if sys.platform != "win32":
+            return HighPerformanceLinuxDriver
+        return super().get_driver_class()
     BINDINGS = [
         ("q", "quit", "Quit"),
         ("escape", "tab_home", "Home"),
