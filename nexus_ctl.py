@@ -125,22 +125,29 @@ def cmd_status(args: argparse.Namespace) -> int:
     kbd_dev = aula_device.find_l99()
     kbd_connected = kbd_dev is not None
     kbd_mode = "Disconnected"
+    kbd_state = "Offline"
     kbd_bat = 0
     if kbd_dev:
-        kbd_mode = "Wired USB (0c45:800a)" if kbd_dev.is_cable else "Wireless 2.4GHz (05ac:024f)"
-        if kbd_dev.is_dongle:
-            live_bat = aula_device.query_keyboard_battery(kbd_dev)
-            if live_bat is not None:
-                kbd_bat = live_bat
-            else:
-                # check cache
-                aula_cache_path = Path.home() / ".cache" / "aula_l99.json"
-                if aula_cache_path.exists():
-                    try:
-                        kcache = json.loads(aula_cache_path.read_text())
-                        kbd_bat = kcache.get("battery", 0)
-                    except Exception:
-                        pass
+        online_info = aula_device.check_keyboard_online(kbd_dev) if kbd_dev.is_dongle else {"connected": True, "firmware": "Wired"}
+        if online_info:
+            fw = online_info.get("firmware", "3.1")
+            kbd_state = f"Online / Active (v{fw})" if kbd_dev.is_dongle else "Online / Active (Wired)"
+            kbd_mode = "Wireless 2.4GHz (05ac:024f)" if kbd_dev.is_dongle else "Wired USB (0c45:800a)"
+            if kbd_dev.is_dongle:
+                live_bat = aula_device.query_keyboard_battery(kbd_dev)
+                if live_bat is not None:
+                    kbd_bat = live_bat
+                else:
+                    aula_cache_path = Path.home() / ".cache" / "aula_l99.json"
+                    if aula_cache_path.exists():
+                        try:
+                            kcache = json.loads(aula_cache_path.read_text())
+                            kbd_bat = kcache.get("battery", 0)
+                        except Exception:
+                            pass
+        else:
+            kbd_state = "Sleeping / Offline"
+            kbd_mode = "Wireless 2.4GHz (Receiver connected)"
 
     if getattr(args, "json", False):
         data = {
@@ -155,8 +162,9 @@ def cmd_status(args: argparse.Namespace) -> int:
             "keyboard": {
                 "connected": kbd_connected,
                 "mode": kbd_mode,
+                "power_state": kbd_state,
                 "battery": kbd_bat,
-                "screen": "3.98-in IPS Active" if kbd_connected else "Offline",
+                "screen": "3.98-in IPS Active" if (kbd_connected and "Online" in kbd_state) else "Offline / Standby",
                 "vendor_channel": "Interface 3",
             },
             "theme": {
@@ -202,8 +210,9 @@ def cmd_status(args: argparse.Namespace) -> int:
     kbd_table.add_column("Value")
 
     kbd_table.add_row("Connection:", Text(kbd_mode, style="cyan" if kbd_connected else "red"))
+    kbd_table.add_row("Power State:", Text(kbd_state, style="bold green" if "Active" in kbd_state else "yellow"))
     kbd_table.add_row("Battery Level:", render_battery_bar(kbd_bat) if kbd_connected else Text("--", style="dim"))
-    kbd_table.add_row("Smart Screen:", Text("3.98-in IPS Active", style="bold green") if kbd_connected else Text("Offline", style="dim red"))
+    kbd_table.add_row("Smart Screen:", Text("3.98-in IPS Active", style="bold green") if ("Active" in kbd_state) else Text("Offline / Standby", style="dim yellow"))
     kbd_table.add_row("Device Node:", Text(kbd_dev.path if kbd_dev else "--", style="dim"))
     kbd_table.add_row("Vendor Channel:", Text("Interface 3 (Confirmed)", style="dim green") if kbd_connected else Text("--", style="dim"))
 
@@ -268,6 +277,16 @@ def cmd_kbd(args: argparse.Namespace) -> int:
         console.print("[bold red]❌ AULA L99 keyboard not detected.[/]")
         return 1
 
+    if getattr(args, "ident", False):
+        info = aula_device.check_keyboard_online(dev)
+        if info:
+            console.print(f"[bold green]✔ AULA L99 Online & Active[/] (Device: {dev.path})")
+            console.print(f"  VID: {info.get('vid', '0c45')} | PID: {info.get('pid', '800a')} | Firmware: v{info.get('firmware', '3.1')}")
+            return 0
+        else:
+            console.print(f"[bold yellow]⚠ AULA L99 2.4GHz Dongle is connected ({dev.path}), but physical keyboard is Sleeping or Powered Off.[/]")
+            return 1
+
     if args.battery:
         bat = aula_device.query_keyboard_battery(dev)
         if bat is not None:
@@ -294,9 +313,14 @@ def cmd_kbd(args: argparse.Namespace) -> int:
         direction = args.direction if args.direction is not None else 0
         speed = max(1, min(5, args.speed or 3))
         brightness = max(1, min(5, args.brightness or 5))
+        colorful = getattr(args, "colorful", False)
+        if getattr(args, "palette", False):
+            colorful = False
 
-        console.print(f"Applying Lighting: Mode=0x{mode:02X} ({AULA_EFFECTS.get(f'0x{mode:02X}', 'Custom')}), RGB=({r},{g},{b}), Speed={speed}, Brightness={brightness}, Direction={direction}")
-        ok = aula_device.set_keyboard_lighting(mode, (r, g, b), direction=direction, brightness=brightness, speed=speed, dev=dev)
+        dir_name = "Right-to-Left" if direction == 1 else "Left-to-Right"
+        palette_mode = "Colorful (Rainbow)" if colorful else f"Palette #{r:02X}{g:02X}{b:02X}"
+        console.print(f"Applying Lighting: Mode=0x{mode:02X} ({AULA_EFFECTS.get(f'0x{mode:02X}', 'Custom')}), {palette_mode}, Speed={speed}, Brightness={brightness}, Direction={dir_name}")
+        ok = aula_device.set_keyboard_lighting(mode, (r, g, b), direction=direction, brightness=brightness, speed=speed, colorful=colorful, dev=dev)
         if ok:
             console.print("[bold green]✔ Lighting applied successfully.[/]")
             return 0
@@ -313,14 +337,18 @@ def cmd_kbd(args: argparse.Namespace) -> int:
         console.print("[bold red]❌ Failed to apply settings.[/]")
         return 1
 
-    if args.win_lock is not None:
-        lock_val = bool(args.win_lock)
-        console.print(f"Setting Windows-Key Lock: {'ON' if lock_val else 'OFF'}")
-        ok = aula_device.set_keyboard_shortcut_locks(win_lock=lock_val, dev=dev)
+    if (args.win_lock is not None
+            or getattr(args, "alt_tab_lock", None) is not None
+            or getattr(args, "alt_f4_lock", None) is not None):
+        win = bool(args.win_lock) if args.win_lock is not None else False
+        alt_tab = bool(args.alt_tab_lock) if getattr(args, "alt_tab_lock", None) is not None else False
+        alt_f4 = bool(args.alt_f4_lock) if getattr(args, "alt_f4_lock", None) is not None else False
+        console.print(f"Setting Shortcut Locks: Win-Lock={'ON' if win else 'OFF'}, Alt+Tab={'ON' if alt_tab else 'OFF'}, Alt+F4={'ON' if alt_f4 else 'OFF'}")
+        ok = aula_device.set_keyboard_shortcut_locks(win_lock=win, alt_tab_lock=alt_tab, alt_f4_lock=alt_f4, dev=dev)
         if ok:
-            console.print(f"[bold green]✔ Windows-Key Lock set to {'ON' if lock_val else 'OFF'}.[/]")
+            console.print(f"[bold green]✔ Gaming shortcut locks updated successfully.[/]")
             return 0
-        console.print("[bold red]❌ Failed to set Win-Lock.[/]")
+        console.print("[bold red]❌ Failed to set shortcut locks.[/]")
         return 1
 
     if args.rtc:
@@ -645,14 +673,19 @@ def main() -> None:
     # 3. kbd
     kbd_parser = subparsers.add_parser("kbd", help="AULA L99 actions", formatter_class=FORMATTER)
     kbd_parser.add_argument("--status", action="store_true", help="Query keyboard status")
+    kbd_parser.add_argument("--ident", action="store_true", help="Query online status and hardware firmware")
     kbd_parser.add_argument("--battery", action="store_true", help="Query 2.4GHz battery level")
     kbd_parser.add_argument("--effect", type=str, help="RGB Effect name or hex opcode (e.g. 0x06)")
     kbd_parser.add_argument("--color", type=str, help="RGB Hex Color (e.g. 8B5CF6)")
+    kbd_parser.add_argument("--colorful", action="store_true", help="Enable dynamic colorful rainbow mode")
+    kbd_parser.add_argument("--palette", action="store_true", help="Enable custom RGB palette mode")
     kbd_parser.add_argument("--speed", type=int, choices=range(1, 6), help="Effect speed (1-5)")
     kbd_parser.add_argument("--brightness", type=int, choices=range(1, 6), help="Brightness level (1-5)")
-    kbd_parser.add_argument("--direction", type=int, choices=[0, 1], help="Direction (0=normal, 1=inverted)")
+    kbd_parser.add_argument("--direction", type=int, choices=[0, 1], help="Direction (0=Left-to-Right, 1=Right-to-Left)")
     kbd_parser.add_argument("--settings", nargs=2, type=int, metavar=("SLEEP", "DEBOUNCE"), help="Set sleep (0-3) and debounce (1-5)")
     kbd_parser.add_argument("--win-lock", type=int, choices=[0, 1], help="Win-key lock (0=off, 1=on)")
+    kbd_parser.add_argument("--alt-tab-lock", type=int, choices=[0, 1], help="Alt+Tab lock (0=off, 1=on)")
+    kbd_parser.add_argument("--alt-f4-lock", type=int, choices=[0, 1], help="Alt+F4 lock (0=off, 1=on)")
     kbd_parser.add_argument("--rtc", action="store_true", help="Synchronize on-board RTC clock")
     kbd_parser.add_argument("--monitor", action="store_true", help="Stream CPU/GPU metrics to keyboard LCD")
     kbd_parser.add_argument("--interval", type=float, help="Monitor stream interval in seconds (default 2.5)")

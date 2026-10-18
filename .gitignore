@@ -7,6 +7,7 @@ __pycache__/
 # Large binary extraction & firmware dump directories
 rapoo_extracted/
 aula_l99_captures/
+aula_l99_captures_v2/
 .user_uploaded/
 scratch/
 

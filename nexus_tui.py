@@ -213,6 +213,8 @@ class NexusTUIApp(App):
     kbd_battery = reactive(0)
     kbd_mode = reactive("Disconnected")
     kbd_win_lock = reactive(False)
+    kbd_alt_tab_lock = reactive(False)
+    kbd_alt_f4_lock = reactive(False)
     kbd_monitor_active = reactive(False)
     kbd_screen_status = reactive("3.98-in IPS Active")
 
@@ -276,7 +278,7 @@ class NexusTUIApp(App):
                             yield self.lbl_ov_kbd_screen
 
                         with Horizontal(classes="stat-row"):
-                            yield Label("Win-Lock    :", classes="stat-label")
+                            yield Label("Gaming Locks:", classes="stat-label")
                             self.lbl_ov_kbd_lock = Label("OFF", classes="value-text")
                             yield self.lbl_ov_kbd_lock
 
@@ -354,9 +356,12 @@ class NexusTUIApp(App):
                             yield self.sel_kbd_speed
                             yield self.sel_kbd_bright
 
-                        yield Label("Direction:", classes="info-label")
-                        self.sel_kbd_dir = Select([("Normal Direction", "0"), ("Inverted Direction", "1")], value="0", id="sel-kbd-dir")
-                        yield self.sel_kbd_dir
+                        yield Label("Direction & Color Palette:", classes="info-label")
+                        with Horizontal():
+                            self.sel_kbd_dir = Select([("Left to Right", "0"), ("Right to Left", "1")], value="0", id="sel-kbd-dir")
+                            self.sel_kbd_palette = Select([("Custom Palette", "palette"), ("Colorful Rainbow", "colorful")], value="palette", id="sel-kbd-palette")
+                            yield self.sel_kbd_dir
+                            yield self.sel_kbd_palette
 
                         yield Button("✨ Apply RGB Lighting", id="btn-kbd-apply-light")
 
@@ -378,7 +383,15 @@ class NexusTUIApp(App):
                         with Horizontal():
                             yield Button("▶ Start LCD Feed", id="btn-kbd-toggle-feed")
                             yield Button("🕒 Sync Clock Once", id="btn-kbd-sync-rtc")
-                        yield Button("🔒 Toggle Windows-Key Lock", id="btn-kbd-winlock")
+
+                        yield Label("Gaming Shortcut Locks:", classes="info-label")
+                        with Horizontal():
+                            self.btn_kbd_winlock = Button("🔒 Win: OFF", id="btn-kbd-winlock")
+                            self.btn_kbd_alttab = Button("🚫 Alt+Tab: OFF", id="btn-kbd-alttab")
+                            self.btn_kbd_altf4 = Button("⛔ Alt+F4: OFF", id="btn-kbd-altf4")
+                            yield self.btn_kbd_winlock
+                            yield self.btn_kbd_alttab
+                            yield self.btn_kbd_altf4
 
             # 4. RECOVERY TAB
             with TabPane("04 Dongle 1 Recovery", id="tab-recovery"):
@@ -517,9 +530,31 @@ class NexusTUIApp(App):
     def watch_kbd_mode(self, val: str) -> None:
         self.lbl_ov_kbd_mode.update(val.upper())
 
-    def watch_kbd_win_lock(self, val: bool) -> None:
-        txt = "ON (Gaming Lock)" if val else "OFF"
+    def _update_locks_display(self) -> None:
+        active = []
+        if self.kbd_win_lock:
+            active.append("Win")
+        if self.kbd_alt_tab_lock:
+            active.append("Alt+Tab")
+        if self.kbd_alt_f4_lock:
+            active.append("Alt+F4")
+        txt = " + ".join(active) if active else "OFF"
         self.lbl_ov_kbd_lock.update(txt)
+        if hasattr(self, "btn_kbd_winlock"):
+            self.btn_kbd_winlock.label = f"🔒 Win: {'ON' if self.kbd_win_lock else 'OFF'}"
+        if hasattr(self, "btn_kbd_alttab"):
+            self.btn_kbd_alttab.label = f"🚫 Alt+Tab: {'ON' if self.kbd_alt_tab_lock else 'OFF'}"
+        if hasattr(self, "btn_kbd_altf4"):
+            self.btn_kbd_altf4.label = f"⛔ Alt+F4: {'ON' if self.kbd_alt_f4_lock else 'OFF'}"
+
+    def watch_kbd_win_lock(self, val: bool) -> None:
+        self._update_locks_display()
+
+    def watch_kbd_alt_tab_lock(self, val: bool) -> None:
+        self._update_locks_display()
+
+    def watch_kbd_alt_f4_lock(self, val: bool) -> None:
+        self._update_locks_display()
 
     # Keybinding actions
     def action_tab_home(self) -> None:
@@ -542,7 +577,7 @@ class NexusTUIApp(App):
         self.poll_hardware_telemetry()
 
     def action_toggle_win_lock(self) -> None:
-        self.worker_toggle_winlock()
+        self.worker_toggle_shortcut_lock("win")
 
     def action_sync_rtc(self) -> None:
         self.worker_sync_rtc()
@@ -564,7 +599,11 @@ class NexusTUIApp(App):
         elif btn_id in ("btn-ov-kbd-rtc", "btn-kbd-sync-rtc"):
             self.worker_sync_rtc()
         elif btn_id in ("btn-ov-kbd-winlock", "btn-kbd-winlock"):
-            self.worker_toggle_winlock()
+            self.worker_toggle_shortcut_lock("win")
+        elif btn_id == "btn-kbd-alttab":
+            self.worker_toggle_shortcut_lock("alt_tab")
+        elif btn_id == "btn-kbd-altf4":
+            self.worker_toggle_shortcut_lock("alt_f4")
         elif btn_id == "btn-goto-mouse":
             self.action_tab_mouse()
         elif btn_id == "btn-goto-kbd":
@@ -612,11 +651,18 @@ class NexusTUIApp(App):
         k_mode = "Disconnected"
         k_bat = self.kbd_battery
         if kbd_dev:
-            k_mode = "Wired USB" if kbd_dev.is_cable else "Wireless 2.4GHz"
-            if kbd_dev.is_dongle:
-                live_bat = aula_device.query_keyboard_battery(kbd_dev)
-                if live_bat is not None:
-                    k_bat = live_bat
+            if kbd_dev.is_cable:
+                k_mode = "Wired USB (Sonix MCU)"
+            else:
+                ident = aula_device.check_keyboard_online(kbd_dev)
+                if ident and ident.get("connected"):
+                    fw = ident.get("firmware_version", "3.1")
+                    k_mode = f"Online 2.4GHz (v{fw})"
+                    live_bat = aula_device.query_keyboard_battery(kbd_dev)
+                    if live_bat is not None:
+                        k_bat = live_bat
+                else:
+                    k_mode = "Dongle Idle / Sleeping"
 
         def update_ui():
             self.mouse_mode = m_mode
@@ -664,9 +710,13 @@ class NexusTUIApp(App):
         speed = int(self.sel_kbd_speed.value or "3")
         bright = int(self.sel_kbd_bright.value or "5")
         direction = int(self.sel_kbd_dir.value or "0")
+        colorful = (getattr(self, "sel_kbd_palette", None) is not None and self.sel_kbd_palette.value == "colorful")
 
-        self.call_from_thread(self.log_msg, f"Applying AULA lighting: Mode=0x{mode:02X}, RGB=({r},{g},{b}), Spd={speed}, Brt={bright}, Dir={direction}")
-        ok = aula_device.set_keyboard_lighting(mode, (r, g, b), direction=direction, brightness=bright, speed=speed)
+        palette_desc = "Colorful Rainbow" if colorful else f"RGB=({r},{g},{b})"
+        self.call_from_thread(self.log_msg, f"Applying AULA lighting: Mode=0x{mode:02X}, {palette_desc}, Spd={speed}, Brt={bright}, Dir={direction}")
+        ok = aula_device.set_keyboard_lighting(
+            mode, (r, g, b), direction=direction, brightness=bright, speed=speed, colorful=colorful
+        )
         if ok:
             self.call_from_thread(self.log_msg, "✔ AULA lighting effect successfully applied!")
         else:
@@ -684,15 +734,42 @@ class NexusTUIApp(App):
             self.call_from_thread(self.log_msg, "❌ Failed to apply keyboard settings.")
 
     @work(thread=True)
-    def worker_toggle_winlock(self) -> None:
-        new_val = not self.kbd_win_lock
-        self.call_from_thread(self.log_msg, f"Toggling Windows-Key Lock -> {'ON' if new_val else 'OFF'}...")
-        ok = aula_device.set_keyboard_shortcut_locks(win_lock=new_val)
-        if ok:
-            self.call_from_thread(lambda: setattr(self, "kbd_win_lock", new_val))
-            self.call_from_thread(self.log_msg, f"✔ Windows-Key Lock is now {'ON' if new_val else 'OFF'}.")
+    def worker_toggle_shortcut_lock(self, lock_type: str = "win") -> None:
+        target_win = self.kbd_win_lock
+        target_alt_tab = self.kbd_alt_tab_lock
+        target_alt_f4 = self.kbd_alt_f4_lock
+
+        if lock_type == "win":
+            target_win = not target_win
+            label = "Windows-Key Lock"
+            new_val = target_win
+        elif lock_type == "alt_tab":
+            target_alt_tab = not target_alt_tab
+            label = "Alt+Tab Lock"
+            new_val = target_alt_tab
+        elif lock_type == "alt_f4":
+            target_alt_f4 = not target_alt_f4
+            label = "Alt+F4 Lock"
+            new_val = target_alt_f4
         else:
-            self.call_from_thread(self.log_msg, "❌ Failed to set Win-Lock state.")
+            return
+
+        self.call_from_thread(self.log_msg, f"Toggling {label} -> {'ON' if new_val else 'OFF'}...")
+        ok = aula_device.set_keyboard_shortcut_locks(
+            win_lock=target_win,
+            alt_tab_lock=target_alt_tab,
+            alt_f4_lock=target_alt_f4,
+        )
+        if ok:
+            if lock_type == "win":
+                self.call_from_thread(lambda: setattr(self, "kbd_win_lock", target_win))
+            elif lock_type == "alt_tab":
+                self.call_from_thread(lambda: setattr(self, "kbd_alt_tab_lock", target_alt_tab))
+            elif lock_type == "alt_f4":
+                self.call_from_thread(lambda: setattr(self, "kbd_alt_f4_lock", target_alt_f4))
+            self.call_from_thread(self.log_msg, f"✔ {label} is now {'ON' if new_val else 'OFF'}.")
+        else:
+            self.call_from_thread(self.log_msg, f"❌ Failed to set {label} state.")
 
     @work(thread=True)
     def worker_sync_rtc(self) -> None:
